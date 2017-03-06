@@ -1,0 +1,22 @@
+<html>
+<head></head>
+<body>
+    <h1>
+        {{ dpath }}
+    </h1>
+    <hr>
+
+    <ul>
+    {{ #each items }}
+        <li >
+            {{ #if this.is_dir }}
+                <a href="/dir/{{ this.item }}">{{ this.item }}</a>
+            {{ else }}
+                <a href="/blob/{{ this.item }}">{{ this.item }}</a>
+            {{ /if }}
+        </li>
+    {{ /each }}
+    </ul>
+</body>
+</html>
+
