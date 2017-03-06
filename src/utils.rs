@@ -25,7 +25,7 @@ pub fn is_hidden(prefix: &PathBuf, path: &PathBuf) -> bool {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use ::is_hidden;
+    use utils::is_hidden;
 
     #[test]
     fn test_is_hidden() {
