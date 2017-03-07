@@ -16,54 +16,6 @@ static FPATH: &'static str = "/home/wilsoniya/IMG_20160914_141827.jpg";
 static CODE2: &'static str = "fart";
 static FPATH2: &'static str = "/home/wilsoniya";
 
-
-// #[get("/dir/<path..>")]
-// pub fn dir(path: PathBuf) -> Option<Template> {
-//     let abs_path = absolutize(path);
-//
-//     if abs_path.is_dir() {
-//         Some(abs_path.clone())
-//     } else {
-//         None
-//     }
-//     .map(|dp: PathBuf| {
-//         let mut dir_items = dp.read_dir().unwrap()
-//         .map(|dir_entry: Result<DirEntry>| {
-//             let dir_entry = dir_entry.unwrap();
-//             let path = dir_entry.path();
-//             let item = dir_entry.path().to_str().unwrap().to_owned();
-//             DirItem { is_dir: path.is_dir(), item: item }
-//         })
-//         .filter(|di| {
-//             !is_hidden(&PathBuf::from(&di.item))
-//         })
-//         .collect::<Vec<DirItem>>();
-//         dir_items.sort();
-//
-//         let code = "foo".to_owned();
-//         let dpath = dp.to_str().unwrap().to_owned();
-//
-//         let context = DirContext { dpath: dpath, items: dir_items, code: code.clone() };
-//         Template::render("dir", &context)
-//
-//     })
-// }
-
-#[get("/blob/<path..>")]
-pub fn blob(path: PathBuf) -> Option<Result<Stream<File>>> {
-    let abs_path = absolutize(path);
-
-    if abs_path.is_file() {
-        Some(abs_path)
-    } else {
-        None
-    }
-    .map(|dp: PathBuf| {
-        File::open(dp).map(|f| Stream::from(f))
-    })
-}
-
-
 #[get("/share/<code>/<path..>")]
 pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
     resolve_code_fpath(code)
