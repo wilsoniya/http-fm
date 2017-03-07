@@ -3,9 +3,11 @@
 
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate rusqlite;
 extern crate serde_json;
 
 mod data;
+mod db;
 mod utils;
 mod views;
 
@@ -13,5 +15,6 @@ mod views;
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![views::dir, views::blob, views::index]).launch();
+        .mount("/", routes![views::index, views::share_dir, views::share])
+        .launch();
 }

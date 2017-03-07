@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use rusqlite;
 
 /// Returns an absolute path given `path`.
 pub fn absolutize(path: PathBuf) -> PathBuf {
@@ -10,15 +11,25 @@ pub fn absolutize(path: PathBuf) -> PathBuf {
     }
 }
 
+pub fn get_last_path_component<'a>(path: &'a PathBuf) -> Option<&'a str> {
+    path.iter().last().and_then(|last| last.to_str())
+}
+
 /// Determines whether `path` is a hidden file given `prefix`.
-pub fn is_hidden(prefix: &PathBuf, path: &PathBuf) -> bool {
-    let hidden_prefix = ".";
-    match path.strip_prefix(prefix).map(|p| {
-        let without_prefix = p.to_str().unwrap().to_owned().clone();
-        without_prefix.starts_with(hidden_prefix)
-    }) {
-        Ok(result) => result,
-        Err(_) => false
+pub fn is_hidden(path: &PathBuf) -> bool {
+    match get_last_path_component(path) {
+        Some(last_comp) => last_comp.starts_with("."),
+        None => false
+    }
+}
+
+pub enum HFMError {
+    SQLError(rusqlite::Error),
+}
+
+impl From<rusqlite::Error> for HFMError {
+    fn from(e: rusqlite::Error) -> HFMError {
+        HFMError::SQLError(e)
     }
 }
 

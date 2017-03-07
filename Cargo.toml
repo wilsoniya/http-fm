@@ -9,6 +9,7 @@ rocket_codegen = "0.2.2"
 serde = "0.9"
 serde_json = "0.9"
 serde_derive = "0.9"
+rusqlite = "0.10.1"
 
 [dependencies.rocket_contrib]
 version = "0.2.2"
