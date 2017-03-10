@@ -1,16 +1,6 @@
 use std::path::PathBuf;
 use rusqlite;
 
-/// Returns an absolute path given `path`.
-pub fn absolutize(path: PathBuf) -> PathBuf {
-    if path.is_absolute() {
-        path
-    } else {
-        let path_str = path.to_str().unwrap();
-        PathBuf::from(String::from("/") + path_str)
-    }
-}
-
 pub fn get_last_path_component<'a>(path: &'a PathBuf) -> Option<&'a str> {
     path.iter().last().and_then(|last| last.to_str())
 }
@@ -40,17 +30,10 @@ mod tests {
 
     #[test]
     fn test_is_hidden() {
+        assert!(is_hidden(&PathBuf::from("/prefix/.hiddenFile")));
 
-        assert!(is_hidden(
-                &PathBuf::from("/prefix"),
-                &PathBuf::from("/prefix/.hiddenFile")));
+        assert!(!is_hidden(&PathBuf::from("/prefix/notHiddenFile")));
 
-        assert!(!is_hidden(
-                &PathBuf::from("/prefix"),
-                &PathBuf::from("/prefix/notHiddenFile")));
-
-        assert!(!is_hidden(
-                &PathBuf::from("/prefix"),
-                &PathBuf::from("/tri.cky/prefix/notHiddenFile")));
+        assert!(!is_hidden(&PathBuf::from("/tri.cky/prefix/notHiddenFile")));
     }
 }

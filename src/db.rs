@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use rusqlite::Connection;
 
 use utils::HFMError;
@@ -9,6 +7,9 @@ static DB_VERSION: u64 = 1;
 
 static SCHEMA_VERSION_DDL: &'static str =
 "CREATE TABLE schema_version( version INTEGER )";
+static GET_SCHEMA_VERSION_SQL: &'static str =
+"SELECT version FROM schema_version";
+
 
 struct DB {
     conn: Connection,
@@ -32,6 +33,5 @@ mod test {
     #[test]
     fn test_function_name() {
         let db = DB::open();
-        assert!(false);
     }
 }

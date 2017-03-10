@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use rocket_contrib::Template;
 
 use data::{DirItem, DirContext, CodeResponse};
-use utils::{absolutize, is_hidden, get_last_path_component};
+use utils::{is_hidden, get_last_path_component};
 
 
 static CODE: &'static str = "c0d3";
