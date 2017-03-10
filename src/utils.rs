@@ -13,6 +13,7 @@ pub fn is_hidden(path: &PathBuf) -> bool {
     }
 }
 
+#[derive(Debug)]
 pub enum HFMError {
     SQLError(rusqlite::Error),
 }

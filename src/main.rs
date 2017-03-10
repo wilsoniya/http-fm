@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(rocket_codegen)]
 
+extern crate chrono;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate rusqlite;
