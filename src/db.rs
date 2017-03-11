@@ -3,12 +3,13 @@ use std::path::PathBuf;
 use chrono::offset::utc::UTC;
 use rusqlite::Connection;
 use rusqlite::types::ToSql;
+use rusqlite::Error as SQLErrorType;
 
 use data::CodePath;
 use utils::HFMError;
 
 static DB_FPATH: &'static str = "/home/wilsoniya/.config/http_fm/db";
-static DB_VERSION: i32 = 1;
+static DB_VERSION: i64 = 1;
 
 static SCHEMA_VERSION_DDL: &'static str =
 "CREATE TABLE IF NOT EXISTS schema_version( version INTEGER )";
@@ -40,6 +41,7 @@ SET hits = ?1
 WHERE code = ?2";
 
 
+#[derive(Debug)]
 pub struct DB {
     conn: Connection,
 }
@@ -49,22 +51,45 @@ impl DB {
         let db_fpath = db_fpath.unwrap_or(DB_FPATH);
         let conn = Connection::open(db_fpath) ?;
         let db = DB { conn: conn };
+
+        db.create_tables() ?;
+        db.upgrade_schema() ?;
+
         Ok(db)
     }
 
     fn open_in_memory() -> Result<DB, HFMError> {
         let conn = Connection::open_in_memory() ?;
         let db = DB { conn: conn };
+
+        db.create_tables() ?;
+        db.upgrade_schema() ?;
+
         Ok(db)
     }
 
-    pub fn create_tables(&self) -> Result<(), HFMError> {
+    fn create_tables(&self) -> Result<(), HFMError> {
         self.conn.execute(SCHEMA_VERSION_DDL, &[]) ?;
-        self.conn.execute(DELETE_SCHEMA_VERSION_SQL, &[]) ?;
-        self.conn.execute(SET_SCHEMA_VERSION_SQL, &[&DB_VERSION]) ?;
         self.conn.execute(CODE_PATH_DDL, &[]) ?;
 
         Ok(())
+    }
+
+    fn upgrade_schema(&self) -> Result<(), HFMError> {
+        // TODO: make this actually do upgrades
+        self.conn.execute(DELETE_SCHEMA_VERSION_SQL, &[]) ?;
+        self.conn.execute(SET_SCHEMA_VERSION_SQL, &[&DB_VERSION]) ?;
+
+        Ok(())
+    }
+
+    fn get_schema_version(&self) -> Result<Option<i64>, HFMError> {
+        let ret = self.conn.prepare(GET_SCHEMA_VERSION_SQL)
+        .and_then(|mut stmt| {
+            stmt.query_row(&[], |row| row.get("version"))
+        }) ?;
+
+        Ok(ret)
     }
 
     pub fn insert_code_path(&self, code: &str, path: &str,
@@ -142,15 +167,25 @@ mod test {
     }
 
     #[test]
-    fn test_create_tables() {
-        let db = DB::open_in_memory().unwrap();
-        assert!(db.create_tables().is_ok());
+    fn test_open_twice() {
+        let temp_file = &mktemp::Temp::new_file().unwrap();
+
+        let db = DB::open(Some(temp_file.as_ref().to_str().unwrap()));
+        assert!(db.is_ok());
+
+        let db = DB::open(Some(temp_file.as_ref().to_str().unwrap()));
+        assert!(db.is_ok());
     }
+
+//  #[test]
+//  fn test_create_tables() {
+//      let db = DB::open_in_memory().unwrap();
+//      assert!(db.create_tables().is_ok());
+//  }
 
     #[test]
     fn test_insert_code_path() {
         let db = DB::open_in_memory().unwrap();
-        assert!(db.create_tables().is_ok());
 
         let result = db.insert_code_path("fart", "/path", None);
         println!("{:?}", result);
@@ -160,7 +195,6 @@ mod test {
     #[test]
     fn test_insert_duplicate_code_path() {
         let db = DB::open_in_memory().unwrap();
-        assert!(db.create_tables().is_ok());
 
         let result = db.insert_code_path("fart", "/path", None);
         println!("{:?}", result);
@@ -172,7 +206,6 @@ mod test {
     #[test]
     fn test_get_path() {
         let db = DB::open_in_memory().unwrap();
-        assert!(db.create_tables().is_ok());
 
         let code = "foobar";
         let path = "/path";
@@ -190,7 +223,6 @@ mod test {
     #[test]
     fn test_get_path_expired() {
         let db = DB::open_in_memory().unwrap();
-        assert!(db.create_tables().is_ok());
 
         let code = "foobar";
         let path = "/path";
@@ -208,7 +240,6 @@ mod test {
     #[test]
     fn test_increment_hit_count() {
         let db = DB::open_in_memory().unwrap();
-        assert!(db.create_tables().is_ok());
 
         let result = db.insert_code_path("fart", "/path", None);
         println!("{:?}", result);
@@ -221,5 +252,14 @@ mod test {
         let maybe_new_hit_count = db.increment_hit_count("fart");
         assert!(maybe_new_hit_count.is_some());
         assert_eq!(maybe_new_hit_count.unwrap(), 2);
+    }
+
+    #[test]
+    fn test_get_schema_version() {
+        let res = DB::open_in_memory();
+        println!("res {:?}", res);
+        let db = DB::open_in_memory().unwrap();
+//      let schema_version = db.get_schema_version();
+//      assert_eq!(schema_version.unwrap().unwrap(), 1);
     }
 }
