@@ -19,3 +19,11 @@ features = ["handlebars_templates", "tera_templates"]
 
 [dev-dependencies]
 mktemp = "0.3.1"
+
+[[bin]]
+name = "hfm"
+path = "src/hfm.rs"
+
+[[bin]]
+name = "hfmd"
+path = "src/main.rs"

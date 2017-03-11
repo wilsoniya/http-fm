@@ -39,6 +39,14 @@ impl PartialOrd for DirItem {
     }
 }
 
+#[derive(Debug)]
+pub struct CodePath {
+    pub code: String,
+    pub path: PathBuf,
+    pub expiration: Option<i64>,
+    pub hits: u64,
+}
+
 pub enum CodeResponse {
     Blob(PathBuf),
     Directory(Template),
