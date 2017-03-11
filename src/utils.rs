@@ -1,5 +1,16 @@
+use std::env::current_dir;
 use std::path::PathBuf;
+
 use rusqlite;
+
+pub fn absolutize(path: PathBuf) -> Option<PathBuf> {
+    if path.is_absolute() {
+        Some(path)
+    } else {
+        current_dir().ok()
+        .map(|cwd| cwd.join(path))
+    }
+}
 
 pub fn get_last_path_component<'a>(path: &'a PathBuf) -> Option<&'a str> {
     path.iter().last().and_then(|last| last.to_str())
@@ -13,7 +24,6 @@ pub fn is_hidden(path: &PathBuf) -> bool {
     }
 }
 
-#[derive(Debug)]
 pub enum HFMError {
     SQLError(rusqlite::Error),
 }

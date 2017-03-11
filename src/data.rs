@@ -1,10 +1,6 @@
 use std::cmp::Ordering;
-use std::fs::{File, metadata};
 use std::path::PathBuf;
 
-use rocket::http::hyper::header::ContentLength;
-use rocket::response::{self, Responder, Response};
-use rocket_contrib::Template;
 
 #[derive(Serialize)]
 pub struct DirContext {
@@ -45,32 +41,4 @@ pub struct CodePath {
     pub path: PathBuf,
     pub expiration: Option<i64>,
     pub hits: u64,
-}
-
-pub enum CodeResponse {
-    Blob(PathBuf),
-    Directory(Template),
-}
-
-impl<'r> Responder<'r> for CodeResponse {
-    fn respond(self) -> response::Result<'r> {
-        match self {
-            CodeResponse::Blob(ref path) => {
-                File::open(path)
-                .and_then(|file| {
-                    metadata(path)
-                    .map(|meta| {
-                        // TODO: set content-disposition for filename
-                        let length = meta.len();
-                        Response::build()
-                        .header(ContentLength(length))
-                        .streamed_body(file)
-                        .finalize()
-                    })
-                })
-                .respond()
-            },
-            CodeResponse::Directory(template) => template.respond(),
-        }
-    }
 }

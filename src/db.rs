@@ -40,7 +40,7 @@ SET hits = ?1
 WHERE code = ?2";
 
 
-struct DB {
+pub struct DB {
     conn: Connection,
 }
 
