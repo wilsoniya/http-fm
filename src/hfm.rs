@@ -1,5 +1,6 @@
 extern crate chrono;
 extern crate clap;
+extern crate rand;
 extern crate rusqlite;
 extern crate serde_json;
 
@@ -14,7 +15,7 @@ use std::path::PathBuf;
 use clap::{App, Arg};
 
 use db::DB;
-use utils::absolutize;
+use utils::{absolutize, generate_code};
 
 
 fn main() {
@@ -33,14 +34,21 @@ fn main() {
 		.get_matches();
 
     let path = absolutize(PathBuf::from(matches.value_of("PATH").unwrap())).unwrap();
-    let code = matches.value_of("CODE").unwrap_or(generate_code());
+    let rand_code = generate_code();
+    let code = matches.value_of("CODE").unwrap_or(rand_code.as_str());
 
     if let Ok(db) = DB::open(None) {
-        let result = db.insert_code_path(code, path.to_str().unwrap(), None);
+        match db.insert_code_path(code, path.to_str().unwrap(), None) {
+            Ok(_) => {
+                println!("path: {:?}", path);
+                println!("is now associated with");
+                // TODO: make this URL prefix configurable
+                println!("url: http://localhost:8000/share/{}", code);
+            },
+            Err(err) => {
+                println!("Something went wrong: {:?}", err);
+            }
+        }
     } else {
     }
-}
-
-fn generate_code<'a>() -> &'a str {
-    "asdf"
 }

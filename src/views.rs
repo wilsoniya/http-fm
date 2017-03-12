@@ -7,6 +7,7 @@ use rocket::response::{self, Responder, Response};
 use rocket_contrib::Template;
 
 use data::{DirItem, DirContext};
+use db::DB;
 use utils::{is_hidden, get_last_path_component};
 
 
@@ -108,11 +109,15 @@ pub fn index() -> Template {
 }
 
 fn resolve_code_fpath(code: &str) -> Option<PathBuf> {
-    match code {
-        c if c == CODE => Some(PathBuf::from(FPATH)),
-        c if c == CODE2 => Some(PathBuf::from(FPATH2)),
-        _ => None
-    }
+    // TODO: somehow save the db handle
+    DB::open(None).ok()
+    .and_then(|db| {
+        db.get_code_path(code).ok()
+        .and_then(|maybe_code_path| {
+            maybe_code_path
+            .map(|code_path| code_path.path)
+        })
+    })
 }
 
 pub enum CodeResponse {

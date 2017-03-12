@@ -2,15 +2,16 @@
 #![plugin(rocket_codegen)]
 
 extern crate chrono;
+extern crate rand;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate rusqlite;
 extern crate serde_json;
 
-mod data;
-mod db;
-mod utils;
-mod views;
+pub mod data;
+pub mod db;
+pub mod utils;
+pub mod views;
 
 #[macro_use] extern crate serde_derive;
 
