@@ -37,18 +37,23 @@ fn main() {
     let rand_code = generate_code();
     let code = matches.value_of("CODE").unwrap_or(rand_code.as_str());
 
-    if let Ok(db) = DB::open(None) {
-        match db.insert_code_path(code, path.to_str().unwrap(), None) {
-            Ok(_) => {
-                println!("path: {:?}", path);
-                println!("is now associated with");
-                // TODO: make this URL prefix configurable
-                println!("url: http://localhost:8000/share/{}", code);
-            },
-            Err(err) => {
-                println!("Something went wrong: {:?}", err);
+    match DB::open(None) {
+        Ok(db) => {
+            match db.insert_code_path(code, path.to_str().unwrap(), None) {
+                Ok(_) => {
+                    println!("path: {:?}", path);
+                    println!("is now associated with");
+                    // TODO: make this URL prefix configurable
+                    println!("url: http://localhost:8000/share/{}", code);
+                },
+                Err(err) => {
+                    println!("Something went wrong: {:?}", err);
+                }
             }
+        },
+        Err(err) => {
+            println!("An error occurred opening the database: {:?}", err);
         }
-    } else {
+
     }
 }

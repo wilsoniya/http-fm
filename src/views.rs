@@ -10,12 +10,6 @@ use data::{DirItem, DirContext};
 use db::DB;
 use utils::{is_hidden, get_last_path_component};
 
-
-static CODE: &'static str = "c0d3";
-static FPATH: &'static str = "/home/wilsoniya/IMG_20160914_141827.jpg";
-static CODE2: &'static str = "fart";
-static FPATH2: &'static str = "/home/wilsoniya";
-
 #[get("/share/<code>/<path..>")]
 pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
     resolve_code_fpath(code)

@@ -1,3 +1,5 @@
+use std::env::home_dir;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 
 use chrono::offset::utc::UTC;
@@ -10,6 +12,8 @@ use utils::HFMError;
 
 static DB_FPATH: &'static str = "/home/wilsoniya/.config/http_fm/db";
 static DB_VERSION: i64 = 1;
+static CONFIG_REL_DPATH: &'static str = ".config/http_fm";
+static DB_FNAME: &'static str = "db";
 
 static SCHEMA_VERSION_DDL: &'static str =
 "CREATE TABLE IF NOT EXISTS schema_version( version INTEGER )";
@@ -47,8 +51,16 @@ pub struct DB {
 }
 
 impl DB {
-    pub fn open(db_fpath: Option<&str>) -> Result<DB, HFMError> {
-        let db_fpath = db_fpath.unwrap_or(DB_FPATH);
+    pub fn open(maybe_db_fpath: Option<&str>) -> Result<DB, HFMError> {
+        let db_fpath = match maybe_db_fpath {
+            Some(db_fpath) => db_fpath.to_owned(),
+            None => {
+                let db_pathbuf = DB::get_db_fpath() ?;
+                let db_fpath = db_pathbuf.to_str().ok_or(HFMError::EnvError(
+                    "Can't resolve db file path.".to_owned())) ?;
+                db_fpath.to_owned()
+            }
+        };
         let conn = Connection::open(db_fpath) ?;
         let db = DB { conn: conn };
 
@@ -56,6 +68,29 @@ impl DB {
         db.upgrade_schema() ?;
 
         Ok(db)
+    }
+
+    fn get_db_fpath() -> Result<PathBuf, HFMError> {
+        if let Some(home_dir) = home_dir() {
+            // case: home dir exists
+            let config_dpath = home_dir.join(PathBuf::from(CONFIG_REL_DPATH));
+
+            if !config_dpath.exists() {
+                create_dir_all(&config_dpath) ?;
+            }
+
+            if config_dpath.is_dir() {
+                Ok(config_dpath.join(PathBuf::from(DB_FNAME)))
+            } else {
+                // case: config path is somehow a file; bail
+                Err(HFMError::EnvError(
+                    format!("Config path points to a file: {:?}", config_dpath).to_owned()))
+            }
+        } else {
+            Err(HFMError::EnvError(
+                "Unable to resolve home directory to open config.".to_owned()))
+        }
+
     }
 
     fn open_in_memory() -> Result<DB, HFMError> {
@@ -176,12 +211,6 @@ mod test {
         let db = DB::open(Some(temp_file.as_ref().to_str().unwrap()));
         assert!(db.is_ok());
     }
-
-//  #[test]
-//  fn test_create_tables() {
-//      let db = DB::open_in_memory().unwrap();
-//      assert!(db.create_tables().is_ok());
-//  }
 
     #[test]
     fn test_insert_code_path() {
