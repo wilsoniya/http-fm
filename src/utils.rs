@@ -64,6 +64,7 @@ pub fn generate_code() -> String {
 
     sample_with_replacement(alphabet, 8)
     .iter()
+    .map(|x| *x)
     .collect()
 }
 
