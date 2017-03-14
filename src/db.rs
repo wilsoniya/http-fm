@@ -43,6 +43,12 @@ static UPDATE_CODE_PATH_HITS_SQL: &'static str = "
 UPDATE code_path
 SET hits = ?1
 WHERE code = ?2";
+static SELECT_ALL_CODE_PATHS_SQL: &'static str = "
+SELECT code, path, expiration, hits
+FROM code_path";
+static DELETE_CODE_PATH_SQL: &'static str = "
+DELETE from code_path
+where code = ?";
 
 
 #[derive(Debug)]
@@ -168,6 +174,34 @@ impl DB {
         Ok(ret)
     }
 
+    pub fn get_all_code_paths(&self) -> Result<Vec<CodePath>, HFMError> {
+        let code_paths = self.conn.prepare(SELECT_ALL_CODE_PATHS_SQL)
+        .and_then(|mut stmt| {
+            stmt.query_map(&[], |row| {
+                let hits: i64 = row.get("hits");
+                let path: String = row.get("path");
+                CodePath {
+                    code: row.get("code"),
+                    path: PathBuf::from(path),
+                    expiration: row.get("expiration"),
+                    hits: hits as u64,
+                }
+            })
+            .map(|code_paths| {
+                code_paths
+                .filter_map(|maybe_code_path| maybe_code_path.ok())
+                .collect::<Vec<CodePath>>()
+            })
+        }) ?;
+
+        Ok(code_paths)
+    }
+
+    pub fn delete_code_path(&self, code: &str) -> Result<usize, HFMError> {
+        let num_rows = self.conn.execute(DELETE_CODE_PATH_SQL, &[&code]) ?;
+        Ok(num_rows as usize)
+    }
+
     pub fn increment_hit_count(&self, code: &str) -> Option<i64> {
         self.get_code_path(code).ok()
         .and_then(|maybe_code_path: Option<CodePath>| {
@@ -264,6 +298,18 @@ mod test {
         assert!(maybe_result.is_ok());
         let result = maybe_result.unwrap();
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_delete_code_path() {
+        let db = DB::open_in_memory().unwrap();
+        db.insert_code_path("fart", "/path", None);
+
+        let result = db.delete_code_path("fart");
+        assert_eq!(result.unwrap(), 1);
+
+        let result2 = db.delete_code_path("fart");
+        assert_eq!(result2.unwrap(), 0);
     }
 
     #[test]

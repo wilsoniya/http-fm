@@ -78,23 +78,7 @@ pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
 
 #[get("/share/<code>")]
 pub fn share(code: &str) -> Option<CodeResponse> {
-    resolve_code_fpath(code)
-    .and_then(|fpath| {
-        match fpath.exists() {
-            true => Some(fpath),
-            false => None,
-        }
-    })
-    .and_then(|fpath| {
-        if fpath.is_file() {
-            Some(CodeResponse::Blob(fpath))
-        } else if fpath.is_dir() {
-            share_dir(code, PathBuf::from(""))
-        } else {
-            // somehow file doesnt' exist
-            None
-        }
-    })
+    resolve_code_fpath(code).and_then(|fpath| share_dir(code, fpath))
 }
 
 #[get("/")]
