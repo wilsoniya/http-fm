@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::fs::{File, metadata};
+use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 
-use rocket::http::hyper::header::ContentLength;
+use rocket::http::hyper::header::{ContentLength, ContentDisposition, DispositionType, DispositionParam, Charset};
 use rocket::response::{self, Responder, Response};
 use rocket_contrib::Template;
 
@@ -110,13 +111,25 @@ impl<'r> Responder<'r> for CodeResponse {
                 File::open(path)
                 .and_then(|file| {
                     metadata(path)
-                    .map(|meta| {
-                        // TODO: set content-disposition for filename
-                        let length = meta.len();
-                        Response::build()
-                        .header(ContentLength(length))
-                        .streamed_body(file)
-                        .finalize()
+                    .and_then(|meta| {
+                        get_last_path_component(path)
+                        .ok_or(Error::new(ErrorKind::InvalidData,
+                                          "Unable to determine content filename"))
+                        .map(|fname| {
+                            let length = meta.len();
+                            Response::build()
+                            .header(ContentLength(length))
+                            .header(ContentDisposition {
+                                disposition: DispositionType::Attachment,
+                                parameters: vec![DispositionParam::Filename(
+                                    Charset::Iso_8859_1,
+                                    None,
+                                    fname.as_bytes().to_owned()
+                                )]
+                            })
+                            .streamed_body(file)
+                            .finalize()
+                        })
                     })
                 })
                 .respond()
