@@ -17,6 +17,9 @@ use clap::{App, Arg, SubCommand};
 use db::DB;
 use utils::{absolutize, generate_code};
 
+static PUBLIC_SCHEME: &'static str = "http";
+static PUBLIC_HOSTNAME: &'static str = "wayne.wallitt.com";
+static PUBLIC_PORT: u16 = 9999;
 
 fn main() {
 	let matches = App::new("http-fm CLI")
@@ -79,7 +82,8 @@ fn main() {
         .expect("An error occurred fetching shares");
 
         for code_path in code_paths.iter() {
-            println!("{:?}", code_path);
+            println!("{} - {}://{}:{}/share/{}", code_path.path.to_str().unwrap(),
+                     PUBLIC_SCHEME, PUBLIC_HOSTNAME, PUBLIC_PORT, code_path.code);
         }
     }
 
@@ -90,6 +94,11 @@ fn main() {
         db.delete_code_path(code)
         .expect("An error occurred while deleting the given share");
     }
+}
+
+fn format_link(code: &str, path: &str) -> String {
+    format!("{}://{}:{}/share/{}", PUBLIC_SCHEME, PUBLIC_HOSTNAME,
+            PUBLIC_PORT, path)
 }
 
 fn open_db() -> DB {
