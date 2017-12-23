@@ -3,6 +3,8 @@ use std::fs::{File, metadata};
 use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 
+use rocket::Request;
+use rocket::http::Status;
 use rocket::http::hyper::header::{ContentLength, ContentDisposition, DispositionType, DispositionParam, Charset};
 use rocket::response::{self, Responder, Response};
 use rocket_contrib::Template;
@@ -12,8 +14,8 @@ use db::DB;
 use utils::{is_hidden, get_last_path_component};
 
 #[get("/share/<code>/<path..>")]
-pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
-    resolve_code_fpath(code)
+pub fn share_dir(code: String, path: PathBuf) -> Option<CodeResponse> {
+    resolve_code_fpath(&code)
     .and_then(|code_root| {
         // case: code resolves to an actual path
         let abs_path = code_root.join(path);
@@ -59,7 +61,7 @@ pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
                 abs_path.strip_prefix(&code_root).ok()
                 .and_then(|code_rel_path| {
                     // case: code_root relative path derived successfully
-                    PathBuf::from(code).join(code_rel_path).to_str()
+                    PathBuf::from(&code).join(code_rel_path).to_str()
                     .map(|dpath| {
                         // case: code_root relative path sucessfully stringified
                         let dpath = dpath.to_owned();
@@ -67,7 +69,7 @@ pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
                         let context = DirContext {
                             dpath: dpath, items: dir_items, code: code_str
                         };
-                        CodeResponse::Directory(Template::render("dir", &context))
+                        CodeResponse::Directory(Template::render("dir", context))
                     })
                 })
             })
@@ -78,8 +80,8 @@ pub fn share_dir(code: &str, path: PathBuf) -> Option<CodeResponse> {
 }
 
 #[get("/share/<code>")]
-pub fn share(code: &str) -> Option<CodeResponse> {
-    resolve_code_fpath(code).and_then(|fpath| share_dir(code, fpath))
+pub fn share(code: String) -> Option<CodeResponse> {
+    resolve_code_fpath(&code).and_then(|fpath| share_dir(code, fpath))
 }
 
 #[get("/")]
@@ -105,7 +107,7 @@ pub enum CodeResponse {
 }
 
 impl<'r> Responder<'r> for CodeResponse {
-    fn respond(self) -> response::Result<'r> {
+    fn respond_to(self, request: &Request) -> Result<Response<'r>, Status> {
         match self {
             CodeResponse::Blob(ref path) => {
                 File::open(path)
@@ -132,9 +134,9 @@ impl<'r> Responder<'r> for CodeResponse {
                         })
                     })
                 })
-                .respond()
+                .respond_to(request)
             },
-            CodeResponse::Directory(template) => template.respond(),
+            CodeResponse::Directory(template) => template.respond_to(request),
         }
     }
 }

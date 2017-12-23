@@ -7,7 +7,9 @@ extern crate rand;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate rusqlite;
+extern crate serde;
 extern crate serde_json;
+#[macro_use] extern crate serde_derive;
 
 use clap::{App, Arg};
 use rocket::config::{Config, Environment};
@@ -17,7 +19,6 @@ pub mod db;
 pub mod utils;
 pub mod views;
 
-#[macro_use] extern crate serde_derive;
 
 fn main() {
     let matches = App::new("http-fm daemon")

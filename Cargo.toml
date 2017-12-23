@@ -7,15 +7,15 @@ authors = ["Michael Wilson <wilsoniya@gmail.com>"]
 chrono = "0.3"
 clap = "2.20.5"
 rand = "0.3.15"
-rocket = "0.2.2"
-rocket_codegen = "0.2.2"
+rocket = "0.3.5"
+rocket_codegen = "0.3.5"
 rusqlite = "0.10.1"
-serde = "0.9"
-serde_derive = "0.9"
-serde_json = "0.9"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
 
 [dependencies.rocket_contrib]
-version = "0.2.2"
+version = "0.3.5"
 default-features = false
 features = ["handlebars_templates", "tera_templates"]
 
