@@ -1,6 +1,12 @@
 use std::convert;
 use std::io;
 
+use actix_web::http::StatusCode;
+
+use actix_web::web::{
+    HttpResponse
+};
+
 #[derive(Debug)]
 pub enum HFMError {
     DiskError {
@@ -8,6 +14,21 @@ pub enum HFMError {
     },
     UnicodeError,
     UnknownFileType,
+}
+
+impl HFMError {
+    fn get_message_status(&self) -> (&str, actix_web::http::StatusCode) {
+        match self {
+            HFMError::DiskError{inner} => {
+                match inner.kind() {
+                    io::ErrorKind::NotFound => ("File not found", StatusCode::NOT_FOUND),
+                    _ => ("Disk error", StatusCode::INTERNAL_SERVER_ERROR)
+                }
+            },
+            HFMError::UnicodeError{..} => ("Unicode error", StatusCode::INTERNAL_SERVER_ERROR),
+            HFMError::UnknownFileType{..} => ("Unknown file type", StatusCode::INTERNAL_SERVER_ERROR),
+        }
+    }
 }
 
 impl convert::From<io::Error> for HFMError {
@@ -18,17 +39,13 @@ impl convert::From<io::Error> for HFMError {
 
 impl std::fmt::Display for HFMError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            HFMError::DiskError{inner} => {
-                match inner.kind() {
-                    io::ErrorKind::NotFound => write!(f, "File not found"),
-                    _ => write!(f, "Disk error")
-                }
-            },
-            HFMError::UnicodeError{..} => write!(f, "Unicode error"),
-            HFMError::UnknownFileType{..} => write!(f, "Unknown file type"),
-        }
+        write!(f, "{}", self.get_message_status().0)
     }
 }
 
-impl actix_web::ResponseError for HFMError { }
+impl actix_web::ResponseError for HFMError {
+    fn error_response(&self) -> HttpResponse {
+        let (msg, status) = self.get_message_status();
+        HttpResponse::build(status).body(String::from(msg))
+    }
+}
