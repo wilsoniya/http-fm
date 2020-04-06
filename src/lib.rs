@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use actix_web::{
     App,
     Error,
@@ -9,6 +11,7 @@ use actix_web::{
 };
 use futures::future::{ready, Ready};
 
+mod errors;
 mod fs;
 
 impl Responder for fs::DirectoryListing {
@@ -25,18 +28,9 @@ async fn index() -> impl Responder {
     "Hello world!"
 }
 
-async fn list_directory() -> impl Responder {
-    fs::DirectoryListing {
-        items: vec![
-            fs::FSItem::Directory {
-                path: String::from("/path/to/fart"),
-            },
-            fs::FSItem::File {
-                path: String::from("/path/to/w33d.txt"),
-                size_bytes: 420,
-            },
-        ]
-    }
+async fn list_directory(params: web::Path<(PathBuf,)>) -> impl Responder {
+    let path = &params.0;
+    fs::ls(path)
 }
 
 #[actix_rt::main]
@@ -44,7 +38,7 @@ pub async fn run_server() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .route("/", web::get().to(index))
-            .route("/ls", web::get().to(list_directory))
+            .route("/ls/{fpath:.*}", web::get().to(list_directory))
     })
     .bind("127.0.0.1:8088")?
     .run()
