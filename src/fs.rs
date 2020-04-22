@@ -1,12 +1,6 @@
-use core::pin::Pin;
 use std::convert::TryInto;
 use std::fs;
 use std::path::Path;
-
-use actix_web::web::Bytes;
-use async_std::fs::File;
-use futures::stream::Stream;
-use futures::task::{Context, Poll};
 
 use serde::{
     Serialize,
@@ -14,23 +8,6 @@ use serde::{
 };
 
 use crate::errors;
-
-// struct StreamedFile(File);
-//
-// impl StreamedFile {
-//     pub fn new(file: File) -> Self {
-//         Self(file)
-//     }
-// }
-//
-// impl Stream for StreamedFile {
-//     type Item = Result<Bytes, errors::HFMError>;
-//
-//     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-//
-//     }
-// }
-
 
 pub fn ls(path: &Path) -> Result<DirectoryListing, errors::HFMError> {
     let abs_path = Path::new("/").join(path);

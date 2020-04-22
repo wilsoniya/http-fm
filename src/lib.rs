@@ -10,9 +10,9 @@ use actix_web::{
     web,
 };
 use futures::future::{ready, Ready};
-use async_std;
-use async_std::io::ReadExt;
-use async_std::prelude::StreamExt;
+use futures::stream::StreamExt;
+use tokio::fs::File;
+use tokio_util::codec::{BytesCodec, FramedRead};
 
 mod errors;
 mod fs;
@@ -38,17 +38,13 @@ async fn list_directory(params: web::Path<(PathBuf,)>) -> impl Responder {
 
 async fn fetch(params: web::Path<(String, PathBuf)>) -> impl Responder {
     let (id, path) = params.into_inner();
-    let file = async_std::fs::File::open("/home/wilsoniya/devel/http_fm/Cargo.lock").await.unwrap();
-    let bytes = file
-        .bytes()
-        .map(|maybe_bytes| {
-            let mut buf = Vec::<u8>::with_capacity(1024);
-            maybe_bytes.map(|byte| {
-                web::Bytes::from(vec![byte])
-            })
-        });
+
+    let file = File::open(path).await.unwrap();
+    let stream = FramedRead::new(file, BytesCodec::new())
+        .map(|maybe_bytesmut| maybe_bytesmut.map(|bytesmut| bytesmut.into()));
+
     HttpResponse::Ok()
-        .streaming(bytes)
+        .streaming(stream)
 }
 
 
