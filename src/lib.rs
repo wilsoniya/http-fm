@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::path::Path;
 
 use actix_web::{
     App,
@@ -37,14 +38,16 @@ async fn list_directory(params: web::Path<(PathBuf,)>) -> impl Responder {
 }
 
 async fn fetch(params: web::Path<(String, PathBuf)>) -> impl Responder {
-    let (id, path) = params.into_inner();
+    let (_id, path) = params.into_inner();
+    let abs_path = Path::new("/").join(path);
 
-    let file = File::open(path).await.unwrap();
-    let stream = FramedRead::new(file, BytesCodec::new())
-        .map(|maybe_bytesmut| maybe_bytesmut.map(|bytesmut| bytesmut.into()));
+    File::open(abs_path).await.map(|file| {
+        let stream = FramedRead::new(file, BytesCodec::new())
+            .map(|maybe_bytesmut| maybe_bytesmut.map(|bytesmut| bytesmut.into()));
 
-    HttpResponse::Ok()
-        .streaming(stream)
+        HttpResponse::Ok()
+            .streaming(stream)
+    })
 }
 
 
@@ -54,7 +57,7 @@ pub async fn run_server() -> std::io::Result<()> {
         App::new()
             .route("/", web::get().to(index))
             .route("/ls/{fpath:.*}", web::get().to(list_directory))
-            .route("/fetch/{id}/{fpath:.*}", web::get().to(fetch))
+            .route("/fetch/{fpath:.*}", web::get().to(fetch))
     })
     .bind("127.0.0.1:8088")?
     .run()
