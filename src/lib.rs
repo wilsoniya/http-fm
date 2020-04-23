@@ -10,12 +10,9 @@ use actix_web::{
     Responder,
     web,
 };
-use actix_web::http::header::ContentType;
-use actix_web::http::header::IntoHeaderValue;
 use bytes::Bytes;
 use futures::future::{ready, Ready};
 use futures::stream::StreamExt;
-use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
 mod errors;
@@ -26,7 +23,8 @@ impl Responder for fs::DirectoryListing {
     type Future = Ready<Result<HttpResponse, Error>>;
 
     fn respond_to(self, _req: &HttpRequest) -> Self::Future {
-        let response = HttpResponse::Ok().json(self);
+        let response = HttpResponse::Ok()
+            .json(self);
         ready(Ok(response))
     }
 }
@@ -36,21 +34,21 @@ impl Responder for fs::FSItem {
     type Future = Ready<Result<HttpResponse, Error>>;
 
     fn respond_to(self, _req: &HttpRequest) -> Self::Future {
-        match self {
+        let response = match self {
             Self::Directory(directory_listing) => {
-                let response = HttpResponse::Ok()
-                    .json(directory_listing);
-                ready(Ok(response))
+                HttpResponse::Ok()
+                    .json(directory_listing)
             },
             Self::File(file, file_length) => {
                 let stream = FramedRead::new(file, BytesCodec::new())
                     .map(|maybe_bytesmut| maybe_bytesmut.map(Bytes::from));
-                let response = HttpResponse::Ok()
+                HttpResponse::Ok()
                     .content_length(file_length)
-                    .streaming(stream);
-                ready(Ok(response))
+                    .streaming(stream)
             },
-        }
+        };
+
+        ready(Ok(response))
     }
 }
 
@@ -58,38 +56,17 @@ async fn index() -> impl Responder {
     "Hello world!"
 }
 
-async fn list_directory(params: web::Path<(PathBuf,)>) -> impl Responder {
-    let path = &params.0;
-    fs::ls(path)
-}
-
 async fn share(params: web::Path<(String, PathBuf)>) -> impl Responder {
     let (_id, path) = params.into_inner();
     let abs_path = Path::new("/").join(path);
-    fs::get(&abs_path).await
+    fs::FSItem::new(&abs_path).await
 }
-
-async fn fetch(params: web::Path<(String, PathBuf)>) -> impl Responder {
-    let (_id, path) = params.into_inner();
-    let abs_path = Path::new("/").join(path);
-
-    File::open(abs_path).await.map(|file| {
-        let stream = FramedRead::new(file, BytesCodec::new())
-            .map(|maybe_bytesmut| maybe_bytesmut.map(|bytesmut| bytesmut.into()));
-
-        HttpResponse::Ok()
-            .streaming(stream)
-    })
-}
-
 
 #[actix_rt::main]
 pub async fn run_server() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .route("/", web::get().to(index))
-            .route("/ls/{fpath:.*}", web::get().to(list_directory))
-            .route("/fetch/{id}/{fpath:.*}", web::get().to(fetch))
             .route("/share/{id}/{fpath:.*}", web::get().to(share))
     })
     .bind("127.0.0.1:8088")?

@@ -1,64 +1,47 @@
-use std::convert::TryInto;
 use std::fs;
 use std::path::Path;
 use tokio;
-use tokio::stream::StreamExt;
 
-use serde::{
-    Serialize,
-    Deserialize,
-};
+use serde::Serialize;
 
 use crate::errors;
 
-pub async fn get(path: &Path) -> Result<FSItem, errors::HFMError> {
-    match tokio::fs::metadata(path).await {
-        Ok(metadata) => {
-            if metadata.is_file() {
-                tokio::fs::File::open(path).await
-                    .map_err(errors::HFMError::from)
-                    .map(|file| FSItem::File(file, metadata.len()))
-            } else if metadata.is_dir() {
-                fs::read_dir(path)
-                    .map_err(errors::HFMError::from)
-                    .and_then(|read_dir| {
-                        read_dir
-                            .map(|maybe_dir_entry| {
-                                maybe_dir_entry
-                                    .map_err(errors::HFMError::from)
-                                    .and_then(<DirItem as std::convert::TryFrom<std::fs::DirEntry>>::try_from)
-                            })
-                        .collect()
-                    })
-                .map(|items| FSItem::Directory(DirectoryListing { items }))
-            } else {
-                Err(errors::HFMError::UnknownFileType)
-            }
-        },
-        Err(err) => Err(errors::HFMError::from(err)),
-    }
-}
-
-pub fn ls(path: &Path) -> Result<DirectoryListing, errors::HFMError> {
-    let abs_path = Path::new("/").join(path);
-    let maybe_dir_entries = fs::read_dir(abs_path);
-    maybe_dir_entries
-        .map_err(std::io::Error::into)
-        .and_then(|read_dir: fs::ReadDir| {
-            read_dir
-                .map(|maybe_dir_entry| {
-                    maybe_dir_entry
-                        .map_err(std::io::Error::into)
-                        .and_then(|dir_entry| dir_entry.try_into())
-                })
-            .collect()
-        })
-        .map(|items| DirectoryListing { items })
-}
-
+/// An item that appears in a filesystem; either a file or a directory.
 pub enum FSItem {
+    /// The contents of a directory
     Directory(DirectoryListing),
+    /// An open file and its length
     File(tokio::fs::File, u64),
+}
+
+impl FSItem {
+    pub async fn new(path: &Path) -> Result<Self, errors::HFMError> {
+        match tokio::fs::metadata(path).await {
+            Ok(metadata) => {
+                if metadata.is_file() {
+                    tokio::fs::File::open(path).await
+                        .map_err(errors::HFMError::from)
+                        .map(|file| Self::File(file, metadata.len()))
+                } else if metadata.is_dir() {
+                    fs::read_dir(path)
+                        .map_err(errors::HFMError::from)
+                        .and_then(|read_dir| {
+                            read_dir
+                                .map(|maybe_dir_entry| {
+                                    maybe_dir_entry
+                                        .map_err(errors::HFMError::from)
+                                        .and_then(<DirItem as std::convert::TryFrom<std::fs::DirEntry>>::try_from)
+                                })
+                            .collect()
+                        })
+                    .map(|items| Self::Directory(DirectoryListing { items }))
+                } else {
+                    Err(errors::HFMError::UnknownFileType)
+                }
+            },
+            Err(err) => Err(errors::HFMError::from(err)),
+        }
+    }
 }
 
 #[derive(Serialize)]
