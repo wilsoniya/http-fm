@@ -10,6 +10,9 @@ use actix_web::{
     Responder,
     web,
 };
+use actix_web::http::header::ContentType;
+use actix_web::http::header::IntoHeaderValue;
+use bytes::Bytes;
 use futures::future::{ready, Ready};
 use futures::stream::StreamExt;
 use tokio::fs::File;
@@ -28,6 +31,29 @@ impl Responder for fs::DirectoryListing {
     }
 }
 
+impl Responder for fs::FSItem {
+    type Error = Error;
+    type Future = Ready<Result<HttpResponse, Error>>;
+
+    fn respond_to(self, _req: &HttpRequest) -> Self::Future {
+        match self {
+            Self::Directory(directory_listing) => {
+                let response = HttpResponse::Ok()
+                    .json(directory_listing);
+                ready(Ok(response))
+            },
+            Self::File(file, file_length) => {
+                let stream = FramedRead::new(file, BytesCodec::new())
+                    .map(|maybe_bytesmut| maybe_bytesmut.map(Bytes::from));
+                let response = HttpResponse::Ok()
+                    .content_length(file_length)
+                    .streaming(stream);
+                ready(Ok(response))
+            },
+        }
+    }
+}
+
 async fn index() -> impl Responder {
     "Hello world!"
 }
@@ -35,6 +61,12 @@ async fn index() -> impl Responder {
 async fn list_directory(params: web::Path<(PathBuf,)>) -> impl Responder {
     let path = &params.0;
     fs::ls(path)
+}
+
+async fn share(params: web::Path<(String, PathBuf)>) -> impl Responder {
+    let (_id, path) = params.into_inner();
+    let abs_path = Path::new("/").join(path);
+    fs::get(&abs_path).await
 }
 
 async fn fetch(params: web::Path<(String, PathBuf)>) -> impl Responder {
@@ -57,7 +89,8 @@ pub async fn run_server() -> std::io::Result<()> {
         App::new()
             .route("/", web::get().to(index))
             .route("/ls/{fpath:.*}", web::get().to(list_directory))
-            .route("/fetch/{fpath:.*}", web::get().to(fetch))
+            .route("/fetch/{id}/{fpath:.*}", web::get().to(fetch))
+            .route("/share/{id}/{fpath:.*}", web::get().to(share))
     })
     .bind("127.0.0.1:8088")?
     .run()

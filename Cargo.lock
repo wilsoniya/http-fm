@@ -805,6 +805,7 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "async-std",
+ "bytes",
  "futures",
  "serde",
  "serde_json",
